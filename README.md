@@ -1,8 +1,8 @@
 # Overview
 ---
 
->This is a cyberwar.
->Every cyberwar has its robotank.
+>This is a cyberwar. <br>
+>Every cyberwar has its robotank. <br>
 >This is our robotank.
 
 The challenge was a web-interface to control a robot located on site. Every team had their own unique credentials. At the first login every team received a coupon worth 5 credits. On the web-interface it was possible to buy an action at price of 5 credits (or a shield at the price of 15). 
@@ -13,7 +13,7 @@ A single button could have the following state:
 - **blue**: no one owned the action, so it could be bought (supposed you had sufficient balance).
 - **green**: you were the owner and you could execute it.
 
-![[Pasted image 20231210222639.png]]
+![](webinterface_start.png)
 # Exploitation
 ---
 ## Web
