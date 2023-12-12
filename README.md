@@ -1,5 +1,5 @@
 `Team` : `srdnlen`
-`Solvers` : `chri, lrnzsir, pysu, sanmatte`
+`Solvers` : `DarkKnight, lrnzsir, pysu, sanmatte`
 <br>
 # Overview
 ---
@@ -38,27 +38,27 @@ The `bbrender.js` script was responsible for altering a team's motto. By inspect
 // bbrender.js
 
 $(document).ready(() => {
-	if (window.current_motto) {
-		var current_motto = window.current_motto.innerText;
-		
-		//Welcome back to my laboratory, 
-		//where safety is the number one priority
-		if (current_motto.includes("<") || current_motto.includes(">")) 
-			return; 
-		
-		current_motto = current_motto.replace(/\[b\]/, "<strong>");
-		current_motto = current_motto.replace(/\[\/b\]/, "</strong>");
-		current_motto = current_motto.replace(/\[i\]/, "<i>");
-		current_motto = current_motto.replace(/\[\/i\]/, "</i>");
-		current_motto = current_motto.replace(/\[url ([^\]\ ]*)\]/, "<a href=$1>");
-		current_motto = current_motto.replace(/(.*)\[\/url\]/, "$1</a>");
-		
-		// Images are so dangerous
-		// current_motto = current_motto.replace(/\[img\]/, '<img src="');
-		// current_motto = current_motto.replace(/\[\/img\]/, '" />');
-		
-		window.current_motto.innerHTML = current_motto;
-	}
+  if (window.current_motto) {
+    var current_motto = window.current_motto.innerText;
+        
+    //Welcome back to my laboratory, 
+    //where safety is the number one priority
+    if (current_motto.includes("<") || current_motto.includes(">")) 
+        return; 
+    
+    current_motto = current_motto.replace(/\[b\]/, "<strong>");
+    current_motto = current_motto.replace(/\[\/b\]/, "</strong>");
+    current_motto = current_motto.replace(/\[i\]/, "<i>");
+    current_motto = current_motto.replace(/\[\/i\]/, "</i>");
+    current_motto = current_motto.replace(/\[url ([^\]\ ]*)\]/, "<a href=$1>");
+    current_motto = current_motto.replace(/(.*)\[\/url\]/, "$1</a>");
+    
+    // Images are so dangerous
+    // current_motto = current_motto.replace(/\[img\]/, '<img src="');
+    // current_motto = current_motto.replace(/\[\/img\]/, '" />');
+    
+    window.current_motto.innerHTML = current_motto;
+  }
 });
 ```
 
@@ -93,9 +93,7 @@ Using the initial coupon of 5 credits that was given at the beginning to each te
 
 ![](ichnusa_meme.png)
 #### Payload description
-In the image below, you can see an example of a payload that allows us to reset the ownership of the *forward* action. The first is what we can insert into the account motto input text and the second is how it becomes after the parsing. In order to fool the `includes` function and avoid breakage of our payload we encoded our payload in base64. After obtaining the XSS, we created payloads to reset all robot's actions: camera, forward, left, right, and backward.
-
-Using the initial coupon of 5 credits that was given at the beginning to each team, we bought the camera action...
+In the image below, you can see an example of a payload that allows us to reset the ownership of the *forward* action. The first is what we can insert into the account motto input text and the second is how it becomes after the parsing. In order to fool the `includes` function and avoid breakage of our payload we encoded our payload in base64.
 ![](poc.png)\
 *NOTE: There is a space between url and \\*
 
@@ -118,7 +116,7 @@ Starting from the account page, we noticed that other specific information is pr
 
 ![](crypto_page.png)
 
-By inspecting the code in the `account.js` source, in particular, we focused on the reset account code section, which after validating the provided token resets the user account and **sets a new coupon**. 
+By inspecting the code in the `account.js` source, in particular, we mainly focused on the reset account code section, which after validating the provided token resets the user account and **sets a new coupon**. 
 
 ```js
 if (await verifyToken(challenge, private_key, token)) {
@@ -127,7 +125,7 @@ if (await verifyToken(challenge, private_key, token)) {
 	...
 ```
 
-Where `verifyToken` function performs an ECDSA verify using the `ed25519` curve, therefore to pass the `verifyToken` function we need to sign the challenge with the private key.
+Where `verifyToken` function performs an ECDSA verification using the `ed25519` curve, therefore to bypass the `verifyToken` function we need to sign the challenge with the private key.
 <br>
 ### Recover the private key
 
@@ -192,8 +190,8 @@ $$ P - P_i = ((s_i - (s_i \oplus 1)) 2^i) \cdot G =
 and thus:
 
 $$ s_i = \begin{cases}
-  0 & P = P_i + 2^i \cdot G \\
-  1 & P = P_i - 2^i \cdot G
+  0 & P = P_i - 2^i \cdot G \\
+  1 & P = P_i + 2^i \cdot G
 \end{cases} $$
 
 After 257 queries, one for $P$ and the others for all $P_i$, we should have all bits of $s$. To test this we can send $s$ as a cookie and check that the public key is $O = 0 \cdot G$. In truth, the server crashes, probably because the coordinates of $O$ are not explicitly defined.
