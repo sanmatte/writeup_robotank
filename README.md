@@ -418,12 +418,12 @@ if __name__ == '__main__':
 In the end, we put the two exploits together to control the remote robot.
 
 Final Flow:
-- Reset the interested robot's action using XSS
-- Infer the private key using public key and secret (only one time)
-- Retrieve the challenge from the account page
-- Sign the challenge with the private key
-- Buy the interested action
-- Send the command to the remote robot
+- Reset the interested robot's action using XSS;
+- Infer the private key using public key and secret (only one time);
+- Retrieve the challenge from the account page;
+- Sign the challenge with the private key;
+- Buy the interested action;
+- Send the command to the remote robot.
 
 We repeated this flow to navigate with the robot in the room and find the two pieces of hidden flags.
 #### First part of the flag:
