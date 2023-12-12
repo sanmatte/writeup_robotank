@@ -5,9 +5,9 @@
 >Every cyberwar has its robotank.
 >This is our robotank.
 
-The goal of the RoboTank challenge is to exploit the provided web interface in order to control a robot located on site, and find the flags placed in the room. Upon the initial login, every team was granted a coupon worth 5 credits. Through the web interface, teams could purchase actions for 5 credits each (or shields for 15 credits).
+The goal of the RoboTank challenge is to exploit the provided web interface in order to control a robot located on-site and find the flags placed in the room. Upon the initial login, every team was granted a coupon worth 5 credits. Through the web interface, teams could purchase actions for 5 credits each (or shields for 15 credits).
 
-On the main page, buttons allow to execute real-time actions on the robot. A button could be in one of three states:
+On the main page, buttons allow us to execute real-time actions on the robot. A button could be in one of three states:
 - **Disabled**: the action was owned by another team, so you couldn't buy it;
 - **Blue**: no one owned the action, so it could be bought (supposed you had sufficient balance);
 - **Green**: you were the owner and you could execute it.
@@ -25,7 +25,7 @@ On the account page `/account/:id`, users could modify a team's motto, and this 
 
 ![](account_page.png)
 
-The `bbrender.js` script was responsible of altering a team's motto. By inspecting the code below, we noticed that the content inside the element in the red box on the left side was extracted through the instruction `window.current_motto.innerText`. Subsequent checks and manipulations were performed, and the result was then inserted back into the same element. However, this process presented **two** main issues: the use of the `innerText` property at the end, which does not sanitize user input (would be better to use a safe property like `textContent` or `DOMPurify` library), and the implemented custom syntax, which allows XSS.
+The `bbrender.js` script was responsible for altering a team's motto. By inspecting the code below, we noticed that the content inside the element in the red box on the left side was extracted through the instruction `window.current_motto.innerText`. Subsequent checks and manipulations were performed, and the result was then inserted back into the same element. However, this process presented **two** main issues: the use of the `innerText` property at the end, which does not sanitize user input (would be better to use a safe property like `textContent` or `DOMPurify` library), and the implemented custom syntax, which allows XSS.
 
 ```js
 // bbrender.js
@@ -34,7 +34,7 @@ $(document).ready(() => {
 	if (window.current_motto) {
 		var current_motto = window.current_motto.innerText;
 		
-		//Welcome back to my laboratory, where safety is number one prioritydefault_account
+		//Welcome back to my laboratory, where safety is the number one priority default_account
 		if (current_motto.includes("<") || current_motto.includes(">")) 
 			return; 
 		
@@ -72,7 +72,10 @@ fetch('/admin')
 	})
 ```
 
-![The dumped page](admin_reset_page.png)
+![](admin_reset_page.png)\
+*The dumped admin page*
+
+&emsp;
 
 After obtaining the XSS, we created payloads to reset all robot's actions: camera, forward, left, right, and backward.
 
@@ -83,7 +86,11 @@ Using the initial coupon of 5 credits that was given at the beginning to each te
 In the image below, you can see an example of a payload that allows us to reset the ownership of the *forward* action. The first is what we can insert into the account motto input text and the second is how it becomes after the parsing. In order to fool the `includes` function and avoid breakage of our payload we encoded our payload in base64. After obtaining the XSS, we created payloads to reset all robot's actions: camera, forward, left, right, and backward.
 
 Using the initial coupon of 5 credits that was given at the beginning to each team, we bought the camera action...
-![NOTE: There is a space between url and \\](poc.png)
+![](poc.png)\
+*NOTE: There is a space between url and \\*
+
+&emsp;
+
 The base64 inside the `atob` function is the code attached below.
 ```js
 fetch(
@@ -112,7 +119,7 @@ if (await verifyToken(challenge, private_key, token)) {
 	...
 ```
 
-Where `verifyToken` function performs a ECDSA verify using the `ed25519` curve, therefore to pass the `verifyToken` function we need to sign the challenge with the private key.
+Where `verifyToken` function performs an ECDSA verify using the `ed25519` curve, therefore to pass the `verifyToken` function we need to sign the challenge with the private key.
 ### Recover the private key
 
 Searching for all the occurrences of the private key in the source code one finds, at line 48 of `routes/auth.js` where `/auth/login` is treated, the following:
@@ -129,7 +136,7 @@ if (user.curve_private_key && user.session_key) {
 }
 ```
 
-We know the value of this cookie, so if we can recover `session_key` we can **recover the private key** and sign the any given challenge.
+We know the value of this cookie, so if we can recover `session_key` we can **recover the private key** and sign any given challenge.
 
 To do so, we need to search where `session_key` is used in the code and if we can recover it from there. At line 43 of `routes/account.js` where `/account/:id` is treated we find:
 
@@ -151,7 +158,7 @@ if (
 
 The `else` clause is the same as the one we saw before, so we can ignore it. The `if` clause is what we are looking for: **modifying the cookie** we can obtain a private key that is the xor of `session_key` and the chosen cookie; the private key is then used to compute the displayed public key.
 
-Let us denote with $G$ the generator of `ed25519` and with $s$ the `session_key`. Recal that the public key is computed as $a \cdot G$ with $a \in \mathbb{Z}$. Let us denote with $s_i$ the $i^{th}$ bit of $s$, thus $s = \sum_{j = 0}^{255} s_j 2^j$. By modifying the cookie we can **flip any bit** of $s$ that we want.
+Let us denote with $G$ the generator of `ed25519` and with $s$ the `session_key`. Recall that the public key is computed as $a \cdot G$ with $a \in \mathbb{Z}$. Let us denote with $s_i$ the $i^{th}$ bit of $s$, thus $s = \sum_{j = 0}^{255} s_j 2^j$. By modifying the cookie we can **flip any bit** of $s$ that we want.
 
 Let $a, b$ be two arbitrary bits. We have that:
 
@@ -408,12 +415,12 @@ if __name__ == '__main__':
 
 ```
 # Summary
-At the end, we put the two exploit together to control the remote robot.
+In the end, we put the two exploits together to control the remote robot.
 
 Final Flow:
-- Reset interested robot's action using XSS
+- Reset the interested robot's action using XSS
 - Infer the private key using public key and secret (only one time)
-- Retrieve challenge from account page
+- Retrieve the challenge from the account page
 - Sign the challenge with the private key
 - Buy the interested action
 - Send the command to the remote robot
