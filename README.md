@@ -31,7 +31,7 @@ On the account page `/account/:id`, users could modify a team's motto, and this 
 
 ![](account_page.png)
 
-The `bbrender.js` script was responsible for altering a team's motto. By inspecting the code below, we noticed that the content inside the element in the red box on the left side was extracted through the instruction `window.current_motto.innerText`. Subsequent checks and manipulations were performed, and the result was then inserted back into the same element. However, this process presented **two** main issues: the use of the `innerText` property at the end, which does not sanitize user input (would be better to use a safe property like `textContent` or `DOMPurify` library), and the implemented custom syntax, which allows XSS.
+The `bbrender.js` script was responsible for altering a team's motto. By inspecting the code below, we noticed that the content inside the element in the red box on the left side was extracted through the instruction `window.current_motto.innerText`. Subsequent checks and manipulations were performed, and the result was then inserted back into the same element. However, this process presented **two** main issues: the use of the `innerHTML` property at the end, which does not sanitize user input and directly replaces it as HTML instead of text, and the implemented custom syntax, which allows XSS.
 <div style="page-break-after: always;"></div>
 
 ```js
